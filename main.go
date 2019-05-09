@@ -34,15 +34,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("init failed: %v", err)
 	}
+	log.Println("Initialized backup process")
 	// Create temporary on-disk backup
 	tmpfile, err := ioutil.TempFile("", cfg.Database)
 	if err != nil {
 		log.Fatalf("file init failed: %v", err)
 	}
+	log.Println("Created tmpfile in", tmpfile.Name())
 	defer func() {
 		tmpname := tmpfile.Name()
 		tmpfile.Close()
 		os.Remove(tmpname)
+		log.Println("Deleted tmpfile")
 	}()
 	// Execute backup
 	cmd := exec.Command(cfg.PgDumpBinary, "-Fc", "-h", cfg.Host, "-p", cfg.Port, "-U", cfg.User, cfg.Database)
@@ -51,6 +54,7 @@ func main() {
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("backup failed: %v", err)
 	}
+	log.Println("Backup successful")
 	// Reset read/write offset
 	tmpfile.Seek(0, 0)
 	fileInfo, err := tmpfile.Stat()
@@ -68,4 +72,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to upload: %v", err)
 	}
+	log.Println("Push successful")
 }
