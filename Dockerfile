@@ -6,6 +6,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -a -installsuffix cgo -ldflags='-w -s' -o /build/pgsql-backup-s3
 
 FROM alpine
-RUN apk update && apk add postgresql-client
+RUN apk update && apk add postgresql-client ca-certificates
 COPY --from=0 /build/pgsql-backup-s3 /usr/bin/pgsql-backup-s3
 ENTRYPOINT [ "/usr/bin/pgsql-backup-s3" ]
