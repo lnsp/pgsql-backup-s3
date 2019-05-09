@@ -8,4 +8,4 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 FROM alpine
 RUN apk update && apk add postgresql
 COPY --from=0 /build/pgsql-backup-s3 /usr/bin/pgsql-backup-s3
-ENTRYPOINT [ "pgsql-backup-s3" ]
+ENTRYPOINT [ "/usr/bin/pgsql-backup-s3" ]
