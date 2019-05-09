@@ -14,17 +14,18 @@ import (
 )
 
 type Config struct {
-	Host      string `default:"localhost"`
-	Port      string `default:"5432"`
-	Database  string `required:"true"`
-	User      string `default:"root"`
-	Password  string `default:"root"`
-	AccessKey string `required:"true"`
-	SecretKey string `required:"true"`
-	Endpoint  string `required:"true"`
-	Bucket    string `required:"true"`
-	Path      string `default:""`
-	Prefix    string `default:""`
+	Host         string `default:"localhost"`
+	Port         string `default:"5432"`
+	Database     string `required:"true"`
+	User         string `default:"root"`
+	Password     string `default:"root"`
+	PgDumpBinary string `default:"/usr/bin/pg_dump"`
+	AccessKey    string `required:"true"`
+	SecretKey    string `required:"true"`
+	Endpoint     string `required:"true"`
+	Bucket       string `required:"true"`
+	Path         string `default:""`
+	Prefix       string `default:""`
 }
 
 func main() {
@@ -44,7 +45,7 @@ func main() {
 		os.Remove(tmpname)
 	}()
 	// Execute backup
-	cmd := exec.Command("pg_dump", "-Fc", "-h", cfg.Host, "-p", cfg.Port, "-U", cfg.User, cfg.Database)
+	cmd := exec.Command(cfg.PgDumpBinary, "-Fc", "-h", cfg.Host, "-p", cfg.Port, "-U", cfg.User, cfg.Database)
 	cmd.Env = []string{"PGPASSWORD=" + cfg.Password}
 	cmd.Stdout = tmpfile
 	if err := cmd.Run(); err != nil {
