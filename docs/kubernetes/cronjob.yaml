@@ -1,0 +1,49 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: daily-backup
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            imagePullPolicy: Always
+            image: lnsp/pgsql-backup-s3
+            env:
+            - name: HOST
+              value: "database-prod"
+            - name: PORT
+              value: "5432"
+            - name: DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: database-prod-access
+                  key: database
+            - name: USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-prod-access
+                  key: user
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-prod-access
+                  key: password
+            - name: ACCESSKEY
+              valueFrom:
+                secretKeyRef:
+                  name: backups-s3-access
+                  key: accessKey
+            - name: SECRETKEY
+              valueFrom:
+                secretKeyRef:
+                  name: backups-s3-access
+                  key: secretKey
+            - name: ENDPOINT
+              value: "fra1.digitaloceanspaces.com"
+            - name: BUCKET
+              value: "my-backup-bucket"
+          restartPolicy: Never
