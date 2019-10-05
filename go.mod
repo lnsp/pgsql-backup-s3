@@ -11,4 +11,5 @@ require (
 	golang.org/x/crypto v0.0.0-20190506204251-e1dfcc566284 // indirect
 	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect
+	k8s.io/klog v1.0.0
 )

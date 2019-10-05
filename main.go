@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	minio "github.com/minio/minio-go"
+	"k8s.io/klog"
 )
 
 type Config struct {
@@ -28,49 +28,67 @@ type Config struct {
 	Prefix       string `default:""`
 }
 
-func main() {
-	var cfg Config
-	err := envconfig.Process("", &cfg)
-	if err != nil {
-		log.Fatalf("init failed: %v", err)
-	}
-	log.Println("Initialized backup process")
-	// Create temporary on-disk backup
-	tmpfile, err := ioutil.TempFile("", cfg.Database)
-	if err != nil {
-		log.Fatalf("file init failed: %v", err)
-	}
-	log.Println("Created tmpfile in", tmpfile.Name())
-	defer func() {
-		tmpname := tmpfile.Name()
-		tmpfile.Close()
-		os.Remove(tmpname)
-		log.Println("Deleted tmpfile")
-	}()
-	// Execute backup
+func dumpToFile(cfg *Config, target *os.File) error {
 	cmd := exec.Command(cfg.PgDumpBinary, "-Fc", "-h", cfg.Host, "-p", cfg.Port, "-U", cfg.User, cfg.Database)
 	cmd.Env = []string{"PGPASSWORD=" + cfg.Password}
-	cmd.Stdout = tmpfile
+	cmd.Stdout = target
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		log.Fatalf("backup failed: %v", err)
+		return err
 	}
-	log.Println("Backup successful")
-	// Reset read/write offset
-	tmpfile.Seek(0, 0)
-	fileInfo, err := tmpfile.Stat()
+	return nil
+}
+
+const uploadDateFormat = "2006-01-02-15-04"
+
+func uploadFileToS3(cfg *Config, source *os.File) error {
+	// Reset pointer
+	source.Seek(0, 0)
+	stat, err := source.Stat()
 	if err != nil {
-		log.Fatalf("failed to get fileinfo: %v", err)
+		return err
 	}
 	// Setup S3 client
 	client, err := minio.New(cfg.Endpoint, cfg.AccessKey, cfg.SecretKey, true)
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		return err
 	}
 	// Upload file
-	objectName := fmt.Sprintf("%s%s_%s", cfg.Prefix, cfg.Database, time.Now().Format("2006-01-02-15-04"))
-	_, err = client.PutObject(cfg.Bucket, filepath.Join(cfg.Path, objectName), tmpfile, fileInfo.Size(), minio.PutObjectOptions{})
+	objectName := fmt.Sprintf("%s%s_%s", cfg.Prefix, cfg.Database, time.Now().Format(uploadDateFormat))
+	_, err = client.PutObject(cfg.Bucket, filepath.Join(cfg.Path, objectName), source, stat.Size(), minio.PutObjectOptions{})
 	if err != nil {
-		log.Fatalf("failed to upload: %v", err)
+		return err
 	}
-	log.Println("Push successful")
+	return nil
+}
+
+func main() {
+	var cfg Config
+	err := envconfig.Process("", &cfg)
+	if err != nil {
+		klog.Fatalf("config init failed: %v", err)
+	}
+	klog.Info("parsed environment configuration")
+	// Create temporary on-disk backup
+	tmpfile, err := ioutil.TempFile("", cfg.Database)
+	if err != nil {
+		klog.Fatalf("file init failed: %v", err)
+	}
+	klog.Infof("created tmpfile in %s", tmpfile.Name())
+	defer func() {
+		tmpname := tmpfile.Name()
+		tmpfile.Close()
+		os.Remove(tmpname)
+		klog.Infof("deleted tmpfile %s", tmpname)
+	}()
+	// Execute backup
+	if err := dumpToFile(&cfg, tmpfile); err != nil {
+		klog.Fatalf("pgsql dump failed: %v", err)
+	}
+	klog.Info("dumped database on disk")
+	// Upload backup to S3
+	if err := uploadFileToS3(&cfg, tmpfile); err != nil {
+		klog.Fatalf("s3 upload failed: %v", err)
+	}
+	klog.Info("backup successful")
 }
