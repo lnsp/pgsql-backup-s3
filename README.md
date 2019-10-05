@@ -1,7 +1,7 @@
 # pgsql-backup-s3
-[![](https://img.shields.io/docker/cloud/build/lnsp/pgsql-backup-s3.svg)](https://cloud.docker.com/repository/docker/lnsp/pgsql-backup-s3)
+[![Build](https://github.com/lnsp/pgsql-backup-s3/workflows/Docker/badge.svg)](https://github.com/lnsp/pgsql-backup-s3/packages)
 
-Small tool that performs a PostgreSQL backup and stores the result in a S3-compatible service.
+Small tool that performs a PostgreSQL backup and push the dump to an S3-compatible service.
 
 ## Environment configuration
 
