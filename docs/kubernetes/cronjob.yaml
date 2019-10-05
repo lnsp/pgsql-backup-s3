@@ -11,7 +11,7 @@ spec:
           containers:
           - name: backup
             imagePullPolicy: Always
-            image: lnsp/pgsql-backup-s3
+            image: docker.pkg.github.com/lnsp/pgsql-backup-s3/backup:latest
             env:
             - name: HOST
               value: "database-prod"
